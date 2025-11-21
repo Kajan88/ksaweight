@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friend Weight Tracker</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        
+        @media (min-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #2575fc;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .friend-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .friend-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .friend-card:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+        }
+        
+        .friend-card.selected {
+            border-color: #2575fc;
+            background: #e3f2fd;
+            transform: scale(1.02);
+        }
+        
+        .friend-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        
+        .friend-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 1rem;
+        }
+        
+        .friend-dob {
+            font-size: 0.75rem;
+            color: #6c757d;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #2575fc;
+            box-shadow: 0 0 0 3px rgba(37, 117, 252, 0.1);
+        }
+        
+        button {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        
+        .chart-container {
+            height: 300px;
+            margin-bottom: 30px;
+        }
+        
+        .weight-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .weight-table th, .weight-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .weight-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .weight-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: white;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #2575fc;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+        }
+        
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .data-info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 767px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .full-width {
+                grid-column: 1;
+            }
+            
+            .friend-list {
+                grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-weight"></i> KSA Weight Tracker</h1>
+            <p class="subtitle">Track and visualize weight progress for your friends</p>
+        </header>
+        
+        <div class="dashboard">
+            <div class="card">
+                <h2 class="card-title"><i class="fas fa-users"></i> Select Friend</h2>
+                <div class="friend-list" id="friendList">
+                    <!-- Friend cards will be generated by JavaScript -->
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2 class="card-title"><i class="fas fa-chart-line"></i> Weight Progress</h2>
+                <div class="chart-container">
+                    <canvas id="weightChart"></canvas>
+                </div>
+                
+                <div class="form-group">
+                    <label for="friendSelect"><i class="fas fa-user"></i> Selected Friend</label>
+                    <select id="friendSelect">
+                        <option value="">Select a friend</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="weightInput"><i class="fas fa-weight-hanging"></i> Today's Weight (kg)</label>
+                    <input type="number" id="weightInput" step="0.1" min="30" max="200" placeholder="Enter weight in kg">
+                </div>
+                
+                <button id="submitWeight"><i class="fas fa-save"></i> Submit Weight</button>
+                
+                <div class="success-message" id="successMessage">
+                    <i class="fas fa-check-circle"></i> Weight submitted successfully!
+                </div>
+                
+                <div class="error-message" id="errorMessage">
+                    <i class="fas fa-exclamation-circle"></i> Error submitting weight. Please try again.
+                </div>
+                
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="currentWeight">-</div>
+                        <div class="stat-label">Current Weight</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="weightChange">-</div>
+                        <div class="stat-label">Change</div>
+                    </div>
+                </div>
+
+                <div class="data-info">
+                    <p><strong>Data Storage:</strong> All weight data is stored in Google Sheets.</p>
+                    <p>Data is automatically saved and shared across all users.</p>
+                </div>
+            </div>
+            
+            <div class="card full-width">
+                <h2 class="card-title"><i class="fas fa-table"></i> Weight History</h2>
+                <div class="table-container">
+                    <table class="weight-table">
+                        <thead>
+                            <tr>
+                                <th>Friend</th>
+                                <th>Date</th>
+                                <th>Weight (kg)</th>
+                                <th>Change</th>
+                                <th>Trend</th>
+                            </tr>
+                        </thead>
+                        <tbody id="weightTableBody">
+                            <!-- Table rows will be generated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Weight Tracker &copy; 2023 | Powered by Google Sheets + GitHub Pages</p>
+        </footer>
+    </div>
+
+    <script>
+        // Friend data with your actual friends
+        const friends = [
+            { id: 1, name: 'Prasath', dob: '1990-08-30', initial: 'P' },
+            { id: 2, name: 'Aruneesh', dob: '1992-11-30', initial: 'A' },
+            { id: 3, name: 'Jakshan', dob: '1992-09-05', initial: 'J' },
+            { id: 4, name: 'Narthanan', dob: '1992-06-11', initial: 'N' },
+            { id: 5, name: 'Kajan', dob: '1988-05-09', initial: 'K' },
+            { id: 6, name: 'Sarmilan', dob: '1990-10-17', initial: 'S' },
+            { id: 7, name: 'Das', dob: '1965-04-18', initial: 'D' },
+            { id: 8, name: 'Jana', dob: '1987-02-11', initial: 'J' },
+            { id: 9, name: 'Sivadas', dob: '1989-11-23', initial: 'S' },
+            { id: 10, name: 'Sanjay', dob: '1993-11-30', initial: 'S' }
+        ];
+
+        // Replace with your Google Apps Script Web App URL
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxHPjCWSwdXv-Tq5heCTJrYQLZdqgQF3DzoJnTtstyFoWR3UisnsEQOBHLMRKrKmiPW6Q/exec';
+        
+        let weightData = [];
+        let selectedFriendId = null;
+        let weightChart = null;
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            renderFriendList();
+            populateFriendSelect();
+            setupEventListeners();
+            loadWeightData();
+        });
+
+        // Load weight data from Google Sheets
+        async function loadWeightData() {
+            try {
+                showLoading();
+                
+                const response = await fetch(`${SCRIPT_URL}?action=getWeights`);
+                if (!response.ok) {
+                    throw new Error('Failed to load data');
+                }
+                
+                const data = await response.json();
+                if (data.success) {
+                    weightData = data.data;
+                    updateAllData();
+                } else {
+                    throw new Error(data.error);
+                }
+                
+            } catch (error) {
+                console.error('Error loading weight data:', error);
+                showError('Error loading data. Please refresh the page.');
+            }
+        }
+
+        // Render friend list as thumbnails
+        function renderFriendList() {
+            const friendList = document.getElementById('friendList');
+            friendList.innerHTML = '';
+            
+            friends.forEach(friend => {
+                const friendCard = document.createElement('div');
+                friendCard.className = 'friend-card';
+                friendCard.dataset.id = friend.id;
+                
+                friendCard.innerHTML = `
+                    <div class="friend-avatar">${friend.initial}</div>
+                    <div class="friend-name">${friend.name}</div>
+                    <div class="friend-dob">DOB: ${formatDate(friend.dob)}</div>
+                `;
+                
+                friendCard.addEventListener('click', () => selectFriend(friend.id));
+                friendList.appendChild(friendCard);
+            });
+        }
+
+        // Populate friend select dropdown
+        function populateFriendSelect() {
+            const select = document.getElementById('friendSelect');
+            select.innerHTML = '<option value="">Select a friend</option>';
+            
+            friends.forEach(friend => {
+                const option = document.createElement('option');
+                option.value = friend.id;
+                option.textContent = friend.name;
+                select.appendChild(option);
+            });
+        }
+
+        // Set up event listeners
+        function setupEventListeners() {
+            document.getElementById('submitWeight').addEventListener('click', submitWeight);
+            document.getElementById('friendSelect').addEventListener('change', function(e) {
+                selectFriend(parseInt(e.target.value));
+            });
+        }
+
+        // Select a friend
+        function selectFriend(friendId) {
+            selectedFriendId = friendId;
+            
+            // Update UI
+            document.querySelectorAll('.friend-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            if (friendId) {
+                document.querySelector(`.friend-card[data-id="${friendId}"]`).classList.add('selected');
+                document.getElementById('friendSelect').value = friendId;
+                
+                // Update chart and table for selected friend
+                updateFriendData();
+            }
+        }
+
+        // Format date for display
+        function formatDate(dateString) {
+            const options = { year: 'numeric', month: 'short', day: 'numeric' };
+            return new Date(dateString).toLocaleDateString('en-US', options);
+        }
+
+        // Submit weight to Google Sheets
+        async function submitWeight() {
+            if (!selectedFriendId) {
+                alert('Please select a friend first');
+                return;
+            }
+            
+            const weightInput = document.getElementById('weightInput');
+            const weight = parseFloat(weightInput.value);
+            
+            if (!weight || weight <= 0) {
+                alert('Please enter a valid weight');
+                return;
+            }
+            
+            const friend = friends.find(f => f.id === selectedFriendId);
+            if (!friend) return;
+            
+            const today = new Date().toISOString().split('T')[0];
+            
+            try {
+                // Show loading state
+                document.getElementById('successMessage').style.display = 'none';
+                document.getElementById('errorMessage').style.display = 'none';
+                
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        'action': 'saveWeight',
+                        'friendId': selectedFriendId,
+                        'friendName': friend.name,
+                        'weight': weight,
+                        'date': today
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to save weight');
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Reload all data to get the latest
+                    await loadWeightData();
+                    
+                    // Show success message
+                    document.getElementById('successMessage').style.display = 'block';
+                    document.getElementById('errorMessage').style.display = 'none';
+                    
+                    // Clear input
+                    weightInput.value = '';
+                    
+                    // Hide success message after 3 seconds
+                    setTimeout(() => {
+                        document.getElementById('successMessage').style.display = 'none';
+                    }, 3000);
+                } else {
+                    throw new Error(result.error);
+                }
+                
+            } catch (error) {
+                console.error('Error submitting weight:', error);
+                document.getElementById('successMessage').style.display = 'none';
+                document.getElementById('errorMessage').style.display = 'block';
+                
+                setTimeout(() => {
+                    document.getElementById('errorMessage').style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        // Show loading state
+        function showLoading() {
+            document.getElementById('weightTableBody').innerHTML = '<tr><td colspan="5" class="loading">Loading weight data...</td></tr>';
+        }
+
+        // Show error message
+        function showError(message) {
+            document.getElementById('weightTableBody').innerHTML = `<tr><td colspan="5" class="loading">${message}</td></tr>`;
+        }
+
+        // Update all data displays
+        function updateAllData() {
+            updateFriendData();
+            updateTable();
+        }
+
+        // Update chart and stats for selected friend
+        function updateFriendData() {
+            if (!selectedFriendId) return;
+            
+            const friendData = weightData
+                .filter(entry => entry.friendId === selectedFriendId)
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            if (friendData.length === 0) {
+                // No data for this friend
+                document.getElementById('currentWeight').textContent = '-';
+                document.getElementById('weightChange').textContent = '-';
+                
+                const ctx = document.getElementById('weightChart').getContext('2d');
+                if (weightChart) {
+                    weightChart.destroy();
+                }
+                ctx.font = "16px Arial";
+                ctx.fillStyle = "#6c757d";
+                ctx.textAlign = "center";
+                ctx.fillText("No weight data available", ctx.canvas.width / 2, ctx.canvas.height / 2);
+                return;
+            }
+            
+            // Update stats
+            const currentWeight = friendData[friendData.length - 1].weight;
+            document.getElementById('currentWeight').textContent = `${currentWeight.toFixed(1)} kg`;
+            
+            if (friendData.length > 1) {
+                const previousWeight = friendData[friendData.length - 2].weight;
+                const change = currentWeight - previousWeight;
+                const changeElement = document.getElementById('weightChange');
+                
+                if (change > 0) {
+                    changeElement.innerHTML = `<span style="color: #e74c3c;">+${change.toFixed(1)} kg</span>`;
+                } else if (change < 0) {
+                    changeElement.innerHTML = `<span style="color: #2ecc71;">${change.toFixed(1)} kg</span>`;
+                } else {
+                    changeElement.innerHTML = `<span>0.0 kg</span>`;
+                }
+            } else {
+                document.getElementById('weightChange').textContent = '-';
+            }
+            
+            // Update chart
+            updateChart(friendData);
+        }
+
+        // Update the chart
+        function updateChart(friendData) {
+            const ctx = document.getElementById('weightChart').getContext('2d');
+            
+            const dates = friendData.map(entry => formatDate(entry.date));
+            const weights = friendData.map(entry => entry.weight);
+            
+            if (weightChart) {
+                weightChart.destroy();
+            }
+            
+            weightChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Weight (kg)',
+                        data: weights,
+                        borderColor: '#2575fc',
+                        backgroundColor: 'rgba(37, 117, 252, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#6a11cb',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Weight (kg)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update the table
+        function updateTable() {
+            const tableBody = document.getElementById('weightTableBody');
+            
+            if (weightData.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="loading">No weight data available</td></tr>';
+                return;
+            }
+            
+            // Sort data by date (newest first)
+            const sortedData = [...weightData].sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            tableBody.innerHTML = '';
+            
+            sortedData.forEach((entry) => {
+                const row = document.createElement('tr');
+                
+                // Get friend's previous weight for change calculation
+                const friendEntries = weightData
+                    .filter(e => e.friendId === entry.friendId)
+                    .sort((a, b) => new Date(a.date) - new Date(b.date));
+                
+                const currentIndex = friendEntries.findIndex(e => 
+                    e.friendId === entry.friendId && 
+                    e.date === entry.date && 
+                    e.weight === entry.weight
+                );
+                
+                let change = '-';
+                let trend = '-';
+                
+                if (currentIndex > 0) {
+                    const prevWeight = friendEntries[currentIndex - 1].weight;
+                    const diff = entry.weight - prevWeight;
+                    
+                    if (diff > 0) {
+                        change = `+${diff.toFixed(1)} kg`;
+                        trend = '<i class="fas fa-arrow-up" style="color: #e74c3c;"></i>';
+                    } else if (diff < 0) {
+                        change = `${diff.toFixed(1)} kg`;
+                        trend = '<i class="fas fa-arrow-down" style="color: #2ecc71;"></i>';
+                    } else {
+                        change = '0.0 kg';
+                        trend = '<i class="fas fa-minus" style="color: #95a5a6;"></i>';
+                    }
+                }
+                
+                row.innerHTML = `
+                    <td><strong>${entry.friendName}</strong></td>
+                    <td>${formatDate(entry.date)}</td>
+                    <td>${entry.weight.toFixed(1)} kg</td>
+                    <td>${change}</td>
+                    <td>${trend}</td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+        }
+    </script>
+</body>
+</html>
