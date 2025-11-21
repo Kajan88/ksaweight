@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* Your existing CSS styles remain the same */
         * {
             margin: 0;
             padding: 0;
@@ -292,7 +293,7 @@
 <body>
     <div class="container">
         <header>
-            <h1><i class="fas fa-weight"></i> KSA Weight Tracker</h1>
+            <h1><i class="fas fa-weight"></i> Friend Weight Tracker</h1>
             <p class="subtitle">Track and visualize weight progress for your friends</p>
         </header>
         
@@ -329,7 +330,7 @@
                 </div>
                 
                 <div class="error-message" id="errorMessage">
-                    <i class="fas fa-exclamation-circle"></i> Error submitting weight. Please try again.
+                    <i class="fas fa-exclamation-circle"></i> <span id="errorText">Error submitting weight. Please try again.</span>
                 </div>
                 
                 <div class="stats">
@@ -346,6 +347,7 @@
                 <div class="data-info">
                     <p><strong>Data Storage:</strong> All weight data is stored in Google Sheets.</p>
                     <p>Data is automatically saved and shared across all users.</p>
+                    <p><strong>Script URL:</strong> <span id="scriptUrlStatus">Not configured</span></p>
                 </div>
             </div>
             
@@ -391,7 +393,8 @@
         ];
 
         // Replace with your Google Apps Script Web App URL
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxHPjCWSwdXv-Tq5heCTJrYQLZdqgQF3DzoJnTtstyFoWR3UisnsEQOBHLMRKrKmiPW6Q/exec';
+        // Example: https://script.google.com/macros/s/ABC123/exec
+        const SCRIPT_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
         
         let weightData = [];
         let selectedFriendId = null;
@@ -399,6 +402,14 @@
 
         // Initialize the app
         document.addEventListener('DOMContentLoaded', function() {
+            // Show script URL status
+            const statusElement = document.getElementById('scriptUrlStatus');
+            if (SCRIPT_URL.includes('YOUR_SCRIPT_ID')) {
+                statusElement.innerHTML = '<span style="color: red;">Please configure SCRIPT_URL in the code</span>';
+            } else {
+                statusElement.innerHTML = `<span style="color: green;">Configured: ${SCRIPT_URL}</span>`;
+            }
+
             renderFriendList();
             populateFriendSelect();
             setupEventListeners();
@@ -410,22 +421,26 @@
             try {
                 showLoading();
                 
-                const response = await fetch(`${SCRIPT_URL}?action=getWeights`);
+                console.log('Loading data from:', SCRIPT_URL + '?action=getWeights');
+                const response = await fetch(SCRIPT_URL + '?action=getWeights');
+                
                 if (!response.ok) {
-                    throw new Error('Failed to load data');
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
                 const data = await response.json();
+                console.log('Received data:', data);
+                
                 if (data.success) {
                     weightData = data.data;
                     updateAllData();
                 } else {
-                    throw new Error(data.error);
+                    throw new Error(data.error || 'Unknown error from server');
                 }
                 
             } catch (error) {
                 console.error('Error loading weight data:', error);
-                showError('Error loading data. Please refresh the page.');
+                showError('Error loading data: ' + error.message);
             }
         }
 
@@ -520,25 +535,32 @@
                 document.getElementById('successMessage').style.display = 'none';
                 document.getElementById('errorMessage').style.display = 'none';
                 
+                const formData = new URLSearchParams();
+                formData.append('action', 'saveWeight');
+                formData.append('friendId', selectedFriendId);
+                formData.append('friendName', friend.name);
+                formData.append('weight', weight);
+                formData.append('date', today);
+
+                console.log('Submitting data to:', SCRIPT_URL);
+                console.log('Data:', Object.fromEntries(formData));
+
                 const response = await fetch(SCRIPT_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                     },
-                    body: new URLSearchParams({
-                        'action': 'saveWeight',
-                        'friendId': selectedFriendId,
-                        'friendName': friend.name,
-                        'weight': weight,
-                        'date': today
-                    })
+                    body: formData
                 });
                 
+                console.log('Response status:', response.status);
+                
                 if (!response.ok) {
-                    throw new Error('Failed to save weight');
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
                 const result = await response.json();
+                console.log('Server response:', result);
                 
                 if (result.success) {
                     // Reload all data to get the latest
@@ -556,13 +578,14 @@
                         document.getElementById('successMessage').style.display = 'none';
                     }, 3000);
                 } else {
-                    throw new Error(result.error);
+                    throw new Error(result.error || 'Unknown server error');
                 }
                 
             } catch (error) {
                 console.error('Error submitting weight:', error);
                 document.getElementById('successMessage').style.display = 'none';
                 document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('errorText').textContent = 'Error: ' + error.message;
                 
                 setTimeout(() => {
                     document.getElementById('errorMessage').style.display = 'none';
