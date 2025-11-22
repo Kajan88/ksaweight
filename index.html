@@ -377,400 +377,480 @@
         </footer>
     </div>
 
-    <script>
-        // Friend data with your actual friends
-        const friends = [
-            { id: 1, name: 'Prasath', dob: '1990-08-30', initial: 'P' },
-            { id: 2, name: 'Aruneesh', dob: '1992-11-30', initial: 'A' },
-            { id: 3, name: 'Jakshan', dob: '1992-09-05', initial: 'J' },
-            { id: 4, name: 'Narthanan', dob: '1992-06-11', initial: 'N' },
-            { id: 5, name: 'Kajan', dob: '1988-05-09', initial: 'K' },
-            { id: 6, name: 'Sarmilan', dob: '1990-10-17', initial: 'S' },
-            { id: 7, name: 'Das', dob: '1965-04-18', initial: 'D' },
-            { id: 8, name: 'Jana', dob: '1987-02-11', initial: 'J' },
-            { id: 9, name: 'Sivadas', dob: '1989-11-23', initial: 'S' },
-            { id: 10, name: 'Sanjay', dob: '1993-11-30', initial: 'S' }
-        ];
+<script>
+    // Friend data with your actual friends
+    const friends = [
+        { id: 1, name: 'Prasath', dob: '1990-08-30', initial: 'P' },
+        { id: 2, name: 'Aruneesh', dob: '1992-11-30', initial: 'A' },
+        { id: 3, name: 'Jakshan', dob: '1992-09-05', initial: 'J' },
+        { id: 4, name: 'Narthanan', dob: '1992-06-11', initial: 'N' },
+        { id: 5, name: 'Kajan', dob: '1988-05-09', initial: 'K' },
+        { id: 6, name: 'Sarmilan', dob: '1990-10-17', initial: 'S' },
+        { id: 7, name: 'Das', dob: '1965-04-18', initial: 'D' },
+        { id: 8, name: 'Jana', dob: '1987-02-11', initial: 'J' },
+        { id: 9, name: 'Sivadas', dob: '1989-11-23', initial: 'S' },
+        { id: 10, name: 'Sanjay', dob: '1993-11-30', initial: 'S' }
+    ];
 
-        // Replace with your Google Apps Script Web App URL
-        // Example: https://script.google.com/macros/s/ABC123/exec
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxHPjCWSwdXv-Tq5heCTJrYQLZdqgQF3DzoJnTtstyFoWR3UisnsEQOBHLMRKrKmiPW6Q/exec';
+    // Replace with your Google Apps Script Web App URL
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxHPjCWSwdXv-Tq5heCTJrYQLZdqgQF3DzoJnTtstyFoWR3UisnsEQOBHLMRKrKmiPW6Q/exec';
+    
+    let weightData = [];
+    let selectedFriendId = null;
+    let weightChart = null;
+
+    // Initialize the app
+    document.addEventListener('DOMContentLoaded', function() {
+        renderFriendList();
+        populateFriendSelect();
+        setupEventListeners();
+        loadWeightData();
         
-        let weightData = [];
-        let selectedFriendId = null;
-        let weightChart = null;
+        // Select first friend by default
+        if (friends.length > 0) {
+            setTimeout(() => selectFriend(friends[0].id), 1000);
+        }
+    });
 
-        // Initialize the app
-        document.addEventListener('DOMContentLoaded', function() {
-            // Show script URL status
-            const statusElement = document.getElementById('scriptUrlStatus');
-            if (SCRIPT_URL.includes('YOUR_SCRIPT_ID')) {
-                statusElement.innerHTML = '<span style="color: red;">Please configure SCRIPT_URL in the code</span>';
+    // Load weight data from Google Sheets
+    async function loadWeightData() {
+        try {
+            showLoading();
+            
+            console.log('Loading data from:', SCRIPT_URL + '?action=getWeights');
+            const response = await fetch(SCRIPT_URL + '?action=getWeights');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('Received data:', data);
+            
+            if (data.success) {
+                weightData = data.data || [];
+                console.log('Processed weight data:', weightData);
+                updateAllData();
             } else {
-                statusElement.innerHTML = `<span style="color: green;">Configured: ${SCRIPT_URL}</span>`;
+                throw new Error(data.error || 'Unknown error from server');
             }
+            
+        } catch (error) {
+            console.error('Error loading weight data:', error);
+            showError('Error loading data: ' + error.message);
+        }
+    }
 
-            renderFriendList();
-            populateFriendSelect();
-            setupEventListeners();
-            loadWeightData();
+    // Render friend list as thumbnails
+    function renderFriendList() {
+        const friendList = document.getElementById('friendList');
+        friendList.innerHTML = '';
+        
+        friends.forEach(friend => {
+            const friendCard = document.createElement('div');
+            friendCard.className = 'friend-card';
+            friendCard.dataset.id = friend.id;
+            
+            friendCard.innerHTML = `
+                <div class="friend-avatar">${friend.initial}</div>
+                <div class="friend-name">${friend.name}</div>
+                <div class="friend-dob">DOB: ${formatDate(friend.dob)}</div>
+            `;
+            
+            friendCard.addEventListener('click', () => selectFriend(friend.id));
+            friendList.appendChild(friendCard);
         });
+    }
 
-        // Load weight data from Google Sheets
-        async function loadWeightData() {
-            try {
-                showLoading();
-                
-                console.log('Loading data from:', SCRIPT_URL + '?action=getWeights');
-                const response = await fetch(SCRIPT_URL + '?action=getWeights');
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                console.log('Received data:', data);
-                
-                if (data.success) {
-                    weightData = data.data;
-                    updateAllData();
-                } else {
-                    throw new Error(data.error || 'Unknown error from server');
-                }
-                
-            } catch (error) {
-                console.error('Error loading weight data:', error);
-                showError('Error loading data: ' + error.message);
+    // Populate friend select dropdown
+    function populateFriendSelect() {
+        const select = document.getElementById('friendSelect');
+        select.innerHTML = '<option value="">Select a friend</option>';
+        
+        friends.forEach(friend => {
+            const option = document.createElement('option');
+            option.value = friend.id;
+            option.textContent = friend.name;
+            select.appendChild(option);
+        });
+    }
+
+    // Set up event listeners
+    function setupEventListeners() {
+        document.getElementById('submitWeight').addEventListener('click', submitWeight);
+        document.getElementById('friendSelect').addEventListener('change', function(e) {
+            selectFriend(parseInt(e.target.value));
+        });
+    }
+
+    // Select a friend
+    function selectFriend(friendId) {
+        selectedFriendId = friendId;
+        
+        // Update UI
+        document.querySelectorAll('.friend-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        
+        if (friendId) {
+            document.querySelector(`.friend-card[data-id="${friendId}"]`).classList.add('selected');
+            document.getElementById('friendSelect').value = friendId;
+            
+            // Update chart and table for selected friend
+            updateFriendData();
+        }
+    }
+
+    // Format date for display
+    function formatDate(dateString) {
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) {
+                return dateString; // Return original if invalid date
             }
-        }
-
-        // Render friend list as thumbnails
-        function renderFriendList() {
-            const friendList = document.getElementById('friendList');
-            friendList.innerHTML = '';
-            
-            friends.forEach(friend => {
-                const friendCard = document.createElement('div');
-                friendCard.className = 'friend-card';
-                friendCard.dataset.id = friend.id;
-                
-                friendCard.innerHTML = `
-                    <div class="friend-avatar">${friend.initial}</div>
-                    <div class="friend-name">${friend.name}</div>
-                    <div class="friend-dob">DOB: ${formatDate(friend.dob)}</div>
-                `;
-                
-                friendCard.addEventListener('click', () => selectFriend(friend.id));
-                friendList.appendChild(friendCard);
-            });
-        }
-
-        // Populate friend select dropdown
-        function populateFriendSelect() {
-            const select = document.getElementById('friendSelect');
-            select.innerHTML = '<option value="">Select a friend</option>';
-            
-            friends.forEach(friend => {
-                const option = document.createElement('option');
-                option.value = friend.id;
-                option.textContent = friend.name;
-                select.appendChild(option);
-            });
-        }
-
-        // Set up event listeners
-        function setupEventListeners() {
-            document.getElementById('submitWeight').addEventListener('click', submitWeight);
-            document.getElementById('friendSelect').addEventListener('change', function(e) {
-                selectFriend(parseInt(e.target.value));
-            });
-        }
-
-        // Select a friend
-        function selectFriend(friendId) {
-            selectedFriendId = friendId;
-            
-            // Update UI
-            document.querySelectorAll('.friend-card').forEach(card => {
-                card.classList.remove('selected');
-            });
-            
-            if (friendId) {
-                document.querySelector(`.friend-card[data-id="${friendId}"]`).classList.add('selected');
-                document.getElementById('friendSelect').value = friendId;
-                
-                // Update chart and table for selected friend
-                updateFriendData();
-            }
-        }
-
-        // Format date for display
-        function formatDate(dateString) {
             const options = { year: 'numeric', month: 'short', day: 'numeric' };
-            return new Date(dateString).toLocaleDateString('en-US', options);
+            return date.toLocaleDateString('en-US', options);
+        } catch (error) {
+            return dateString; // Return original if error
         }
+    }
 
-        // Submit weight to Google Sheets
-        async function submitWeight() {
-            if (!selectedFriendId) {
-                alert('Please select a friend first');
-                return;
+    // Submit weight to Google Sheets
+    async function submitWeight() {
+        if (!selectedFriendId) {
+            alert('Please select a friend first');
+            return;
+        }
+        
+        const weightInput = document.getElementById('weightInput');
+        const weight = parseFloat(weightInput.value);
+        
+        if (!weight || weight <= 0) {
+            alert('Please enter a valid weight');
+            return;
+        }
+        
+        const friend = friends.find(f => f.id === selectedFriendId);
+        if (!friend) return;
+        
+        const today = new Date().toISOString().split('T')[0];
+        
+        try {
+            // Show loading state
+            document.getElementById('successMessage').style.display = 'none';
+            document.getElementById('errorMessage').style.display = 'none';
+            
+            const formData = new URLSearchParams();
+            formData.append('action', 'saveWeight');
+            formData.append('friendId', selectedFriendId);
+            formData.append('friendName', friend.name);
+            formData.append('weight', weight);
+            formData.append('date', today);
+
+            console.log('Submitting data to:', SCRIPT_URL);
+            console.log('Data:', Object.fromEntries(formData));
+
+            const response = await fetch(SCRIPT_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: formData
+            });
+            
+            console.log('Response status:', response.status);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
             
-            const weightInput = document.getElementById('weightInput');
-            const weight = parseFloat(weightInput.value);
+            const result = await response.json();
+            console.log('Server response:', result);
             
-            if (!weight || weight <= 0) {
-                alert('Please enter a valid weight');
-                return;
-            }
-            
-            const friend = friends.find(f => f.id === selectedFriendId);
-            if (!friend) return;
-            
-            const today = new Date().toISOString().split('T')[0];
-            
-            try {
-                // Show loading state
-                document.getElementById('successMessage').style.display = 'none';
+            if (result.success) {
+                // Reload all data to get the latest
+                await loadWeightData();
+                
+                // Show success message
+                document.getElementById('successMessage').style.display = 'block';
                 document.getElementById('errorMessage').style.display = 'none';
                 
-                const formData = new URLSearchParams();
-                formData.append('action', 'saveWeight');
-                formData.append('friendId', selectedFriendId);
-                formData.append('friendName', friend.name);
-                formData.append('weight', weight);
-                formData.append('date', today);
-
-                console.log('Submitting data to:', SCRIPT_URL);
-                console.log('Data:', Object.fromEntries(formData));
-
-                const response = await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: formData
-                });
+                // Clear input
+                weightInput.value = '';
                 
-                console.log('Response status:', response.status);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const result = await response.json();
-                console.log('Server response:', result);
-                
-                if (result.success) {
-                    // Reload all data to get the latest
-                    await loadWeightData();
-                    
-                    // Show success message
-                    document.getElementById('successMessage').style.display = 'block';
-                    document.getElementById('errorMessage').style.display = 'none';
-                    
-                    // Clear input
-                    weightInput.value = '';
-                    
-                    // Hide success message after 3 seconds
-                    setTimeout(() => {
-                        document.getElementById('successMessage').style.display = 'none';
-                    }, 3000);
-                } else {
-                    throw new Error(result.error || 'Unknown server error');
-                }
-                
-            } catch (error) {
-                console.error('Error submitting weight:', error);
-                document.getElementById('successMessage').style.display = 'none';
-                document.getElementById('errorMessage').style.display = 'block';
-                document.getElementById('errorText').textContent = 'Error: ' + error.message;
-                
+                // Hide success message after 3 seconds
                 setTimeout(() => {
-                    document.getElementById('errorMessage').style.display = 'none';
-                }, 5000);
-            }
-        }
-
-        // Show loading state
-        function showLoading() {
-            document.getElementById('weightTableBody').innerHTML = '<tr><td colspan="5" class="loading">Loading weight data...</td></tr>';
-        }
-
-        // Show error message
-        function showError(message) {
-            document.getElementById('weightTableBody').innerHTML = `<tr><td colspan="5" class="loading">${message}</td></tr>`;
-        }
-
-        // Update all data displays
-        function updateAllData() {
-            updateFriendData();
-            updateTable();
-        }
-
-        // Update chart and stats for selected friend
-        function updateFriendData() {
-            if (!selectedFriendId) return;
-            
-            const friendData = weightData
-                .filter(entry => entry.friendId === selectedFriendId)
-                .sort((a, b) => new Date(a.date) - new Date(b.date));
-            
-            if (friendData.length === 0) {
-                // No data for this friend
-                document.getElementById('currentWeight').textContent = '-';
-                document.getElementById('weightChange').textContent = '-';
-                
-                const ctx = document.getElementById('weightChart').getContext('2d');
-                if (weightChart) {
-                    weightChart.destroy();
-                }
-                ctx.font = "16px Arial";
-                ctx.fillStyle = "#6c757d";
-                ctx.textAlign = "center";
-                ctx.fillText("No weight data available", ctx.canvas.width / 2, ctx.canvas.height / 2);
-                return;
-            }
-            
-            // Update stats
-            const currentWeight = friendData[friendData.length - 1].weight;
-            document.getElementById('currentWeight').textContent = `${currentWeight.toFixed(1)} kg`;
-            
-            if (friendData.length > 1) {
-                const previousWeight = friendData[friendData.length - 2].weight;
-                const change = currentWeight - previousWeight;
-                const changeElement = document.getElementById('weightChange');
-                
-                if (change > 0) {
-                    changeElement.innerHTML = `<span style="color: #e74c3c;">+${change.toFixed(1)} kg</span>`;
-                } else if (change < 0) {
-                    changeElement.innerHTML = `<span style="color: #2ecc71;">${change.toFixed(1)} kg</span>`;
-                } else {
-                    changeElement.innerHTML = `<span>0.0 kg</span>`;
-                }
+                    document.getElementById('successMessage').style.display = 'none';
+                }, 3000);
             } else {
-                document.getElementById('weightChange').textContent = '-';
+                throw new Error(result.error || 'Unknown server error');
             }
             
-            // Update chart
-            updateChart(friendData);
+        } catch (error) {
+            console.error('Error submitting weight:', error);
+            document.getElementById('successMessage').style.display = 'none';
+            document.getElementById('errorMessage').style.display = 'block';
+            document.getElementById('errorText').textContent = 'Error: ' + error.message;
+            
+            setTimeout(() => {
+                document.getElementById('errorMessage').style.display = 'none';
+            }, 5000);
         }
+    }
 
-        // Update the chart
-        function updateChart(friendData) {
+    // Show loading state
+    function showLoading() {
+        document.getElementById('weightTableBody').innerHTML = '<tr><td colspan="5" class="loading">Loading weight data...</td></tr>';
+    }
+
+    // Show error message
+    function showError(message) {
+        document.getElementById('weightTableBody').innerHTML = `<tr><td colspan="5" class="loading">${message}</td></tr>`;
+    }
+
+    // Update all data displays
+    function updateAllData() {
+        updateFriendData();
+        updateTable();
+    }
+
+    // Update chart and stats for selected friend
+    function updateFriendData() {
+        if (!selectedFriendId) return;
+        
+        const friendData = weightData
+            .filter(entry => entry.friendId === selectedFriendId)
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        console.log('Friend data for chart:', friendData);
+        
+        if (friendData.length === 0) {
+            // No data for this friend
+            document.getElementById('currentWeight').textContent = '-';
+            document.getElementById('weightChange').textContent = '-';
+            
             const ctx = document.getElementById('weightChart').getContext('2d');
-            
-            const dates = friendData.map(entry => formatDate(entry.date));
-            const weights = friendData.map(entry => entry.weight);
-            
             if (weightChart) {
                 weightChart.destroy();
+                weightChart = null;
             }
             
-            weightChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: dates,
-                    datasets: [{
-                        label: 'Weight (kg)',
-                        data: weights,
-                        borderColor: '#2575fc',
-                        backgroundColor: 'rgba(37, 117, 252, 0.1)',
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.4,
-                        pointBackgroundColor: '#6a11cb',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2,
-                        pointRadius: 5
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: false,
-                            title: {
-                                display: true,
-                                text: 'Weight (kg)'
+            // Clear canvas and show message
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            ctx.font = "16px Arial";
+            ctx.fillStyle = "#6c757d";
+            ctx.textAlign = "center";
+            ctx.fillText("No weight data available", ctx.canvas.width / 2, ctx.canvas.height / 2);
+            return;
+        }
+        
+        // Update stats
+        const currentWeight = friendData[friendData.length - 1].weight;
+        document.getElementById('currentWeight').textContent = `${currentWeight.toFixed(1)} kg`;
+        
+        if (friendData.length > 1) {
+            const previousWeight = friendData[friendData.length - 2].weight;
+            const change = currentWeight - previousWeight;
+            const changeElement = document.getElementById('weightChange');
+            
+            if (change > 0) {
+                changeElement.innerHTML = `<span style="color: #e74c3c;">+${change.toFixed(1)} kg</span>`;
+            } else if (change < 0) {
+                changeElement.innerHTML = `<span style="color: #2ecc71;">${change.toFixed(1)} kg</span>`;
+            } else {
+                changeElement.innerHTML = `<span>0.0 kg</span>`;
+            }
+        } else {
+            document.getElementById('weightChange').textContent = '-';
+        }
+        
+        // Update chart
+        updateChart(friendData);
+    }
+
+    // Update the chart
+    function updateChart(friendData) {
+        const ctx = document.getElementById('weightChart').getContext('2d');
+        
+        // Sort data by date to ensure correct order
+        const sortedData = [...friendData].sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        const dates = sortedData.map(entry => {
+            try {
+                const date = new Date(entry.date);
+                return date.toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric' 
+                });
+            } catch (error) {
+                return entry.date; // Return original if date parsing fails
+            }
+        });
+        
+        const weights = sortedData.map(entry => {
+            const weight = parseFloat(entry.weight);
+            return isNaN(weight) ? 0 : weight;
+        });
+        
+        console.log('Chart dates:', dates);
+        console.log('Chart weights:', weights);
+        
+        // Destroy existing chart if it exists
+        if (weightChart) {
+            weightChart.destroy();
+        }
+        
+        // Create new chart
+        weightChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [{
+                    label: 'Weight (kg)',
+                    data: weights,
+                    borderColor: '#2575fc',
+                    backgroundColor: 'rgba(37, 117, 252, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#6a11cb',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 6,
+                    pointHoverRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: 'Weight (kg)',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
                             }
                         },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Date'
-                            }
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.1)'
                         }
                     },
-                    plugins: {
-                        legend: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Date',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        },
+                        grid: {
                             display: false
                         }
                     }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleFont: {
+                            size: 14
+                        },
+                        bodyFont: {
+                            size: 14
+                        },
+                        callbacks: {
+                            label: function(context) {
+                                return `Weight: ${context.parsed.y} kg`;
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                animation: {
+                    duration: 1000,
+                    easing: 'easeOutQuart'
                 }
-            });
-        }
+            }
+        });
+    }
 
-        // Update the table
-        function updateTable() {
-            const tableBody = document.getElementById('weightTableBody');
+    // Update the table
+    function updateTable() {
+        const tableBody = document.getElementById('weightTableBody');
+        
+        if (weightData.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5" class="loading">No weight data available</td></tr>';
+            return;
+        }
+        
+        // Sort data by date (newest first)
+        const sortedData = [...weightData].sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        tableBody.innerHTML = '';
+        
+        sortedData.forEach((entry) => {
+            const row = document.createElement('tr');
             
-            if (weightData.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="5" class="loading">No weight data available</td></tr>';
-                return;
+            // Get friend's previous weight for change calculation
+            const friendEntries = weightData
+                .filter(e => e.friendId === entry.friendId)
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            const currentIndex = friendEntries.findIndex(e => 
+                e.friendId === entry.friendId && 
+                e.date === entry.date && 
+                e.weight === entry.weight
+            );
+            
+            let change = '-';
+            let trend = '-';
+            
+            if (currentIndex > 0) {
+                const prevWeight = friendEntries[currentIndex - 1].weight;
+                const diff = entry.weight - prevWeight;
+                
+                if (diff > 0) {
+                    change = `+${diff.toFixed(1)} kg`;
+                    trend = '<i class="fas fa-arrow-up" style="color: #e74c3c;"></i>';
+                } else if (diff < 0) {
+                    change = `${diff.toFixed(1)} kg`;
+                    trend = '<i class="fas fa-arrow-down" style="color: #2ecc71;"></i>';
+                } else {
+                    change = '0.0 kg';
+                    trend = '<i class="fas fa-minus" style="color: #95a5a6;"></i>';
+                }
             }
             
-            // Sort data by date (newest first)
-            const sortedData = [...weightData].sort((a, b) => new Date(b.date) - new Date(a.date));
+            row.innerHTML = `
+                <td><strong>${entry.friendName}</strong></td>
+                <td>${formatDate(entry.date)}</td>
+                <td>${parseFloat(entry.weight).toFixed(1)} kg</td>
+                <td>${change}</td>
+                <td>${trend}</td>
+            `;
             
-            tableBody.innerHTML = '';
-            
-            sortedData.forEach((entry) => {
-                const row = document.createElement('tr');
-                
-                // Get friend's previous weight for change calculation
-                const friendEntries = weightData
-                    .filter(e => e.friendId === entry.friendId)
-                    .sort((a, b) => new Date(a.date) - new Date(b.date));
-                
-                const currentIndex = friendEntries.findIndex(e => 
-                    e.friendId === entry.friendId && 
-                    e.date === entry.date && 
-                    e.weight === entry.weight
-                );
-                
-                let change = '-';
-                let trend = '-';
-                
-                if (currentIndex > 0) {
-                    const prevWeight = friendEntries[currentIndex - 1].weight;
-                    const diff = entry.weight - prevWeight;
-                    
-                    if (diff > 0) {
-                        change = `+${diff.toFixed(1)} kg`;
-                        trend = '<i class="fas fa-arrow-up" style="color: #e74c3c;"></i>';
-                    } else if (diff < 0) {
-                        change = `${diff.toFixed(1)} kg`;
-                        trend = '<i class="fas fa-arrow-down" style="color: #2ecc71;"></i>';
-                    } else {
-                        change = '0.0 kg';
-                        trend = '<i class="fas fa-minus" style="color: #95a5a6;"></i>';
-                    }
-                }
-                
-                row.innerHTML = `
-                    <td><strong>${entry.friendName}</strong></td>
-                    <td>${formatDate(entry.date)}</td>
-                    <td>${entry.weight.toFixed(1)} kg</td>
-                    <td>${change}</td>
-                    <td>${trend}</td>
-                `;
-                
-                tableBody.appendChild(row);
-            });
+            tableBody.appendChild(row);
+        });
+    }
+
+    // Add debug function to check data
+    window.debugData = function() {
+        console.log('All weight data:', weightData);
+        console.log('Selected friend ID:', selectedFriendId);
+        if (selectedFriendId) {
+            const friendData = weightData.filter(entry => entry.friendId === selectedFriendId);
+            console.log('Selected friend data:', friendData);
         }
-    </script>
+    };
+</script>
 </body>
 </html>
