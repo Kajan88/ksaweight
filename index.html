@@ -393,7 +393,7 @@
     ];
 
     // Replace with your Google Apps Script Web App URL
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxHPjCWSwdXv-Tq5heCTJrYQLZdqgQF3DzoJnTtstyFoWR3UisnsEQOBHLMRKrKmiPW6Q/exec';
+    const SCRIPT_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
     
     let weightData = [];
     let selectedFriendId = null;
@@ -401,15 +401,11 @@
 
     // Initialize the app
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('Initializing app...');
         renderFriendList();
         populateFriendSelect();
         setupEventListeners();
         loadWeightData();
-        
-        // Select first friend by default
-        if (friends.length > 0) {
-            setTimeout(() => selectFriend(friends[0].id), 1000);
-        }
     });
 
     // Load weight data from Google Sheets
@@ -430,6 +426,12 @@
             if (data.success) {
                 weightData = data.data || [];
                 console.log('Processed weight data:', weightData);
+                
+                // Select first friend if none selected
+                if (!selectedFriendId && friends.length > 0) {
+                    selectFriend(friends[0].id);
+                }
+                
                 updateAllData();
             } else {
                 throw new Error(data.error || 'Unknown error from server');
@@ -548,7 +550,6 @@
             formData.append('date', today);
 
             console.log('Submitting data to:', SCRIPT_URL);
-            console.log('Data:', Object.fromEntries(formData));
 
             const response = await fetch(SCRIPT_URL, {
                 method: 'POST',
@@ -577,11 +578,6 @@
                 
                 // Clear input
                 weightInput.value = '';
-                
-                // Hide success message after 3 seconds
-                setTimeout(() => {
-                    document.getElementById('successMessage').style.display = 'none';
-                }, 3000);
             } else {
                 throw new Error(result.error || 'Unknown server error');
             }
@@ -591,10 +587,6 @@
             document.getElementById('successMessage').style.display = 'none';
             document.getElementById('errorMessage').style.display = 'block';
             document.getElementById('errorText').textContent = 'Error: ' + error.message;
-            
-            setTimeout(() => {
-                document.getElementById('errorMessage').style.display = 'none';
-            }, 5000);
         }
     }
 
@@ -616,7 +608,10 @@
 
     // Update chart and stats for selected friend
     function updateFriendData() {
-        if (!selectedFriendId) return;
+        if (!selectedFriendId) {
+            console.log('No friend selected, skipping chart update');
+            return;
+        }
         
         const friendData = weightData
             .filter(entry => entry.friendId === selectedFriendId)
@@ -628,23 +623,39 @@
             // No data for this friend
             document.getElementById('currentWeight').textContent = '-';
             document.getElementById('weightChange').textContent = '-';
-            
-            const ctx = document.getElementById('weightChart').getContext('2d');
-            if (weightChart) {
-                weightChart.destroy();
-                weightChart = null;
-            }
-            
-            // Clear canvas and show message
-            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-            ctx.font = "16px Arial";
-            ctx.fillStyle = "#6c757d";
-            ctx.textAlign = "center";
-            ctx.fillText("No weight data available", ctx.canvas.width / 2, ctx.canvas.height / 2);
+            clearChart();
+            showNoDataMessage();
             return;
         }
         
         // Update stats
+        updateStats(friendData);
+        
+        // Update chart
+        updateChart(friendData);
+    }
+
+    // Clear the chart
+    function clearChart() {
+        const ctx = document.getElementById('weightChart').getContext('2d');
+        if (weightChart) {
+            weightChart.destroy();
+            weightChart = null;
+        }
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    }
+
+    // Show no data message
+    function showNoDataMessage() {
+        const ctx = document.getElementById('weightChart').getContext('2d');
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#6c757d";
+        ctx.textAlign = "center";
+        ctx.fillText("No weight data available", ctx.canvas.width / 2, ctx.canvas.height / 2);
+    }
+
+    // Update stats
+    function updateStats(friendData) {
         const currentWeight = friendData[friendData.length - 1].weight;
         document.getElementById('currentWeight').textContent = `${currentWeight.toFixed(1)} kg`;
         
@@ -663,19 +674,21 @@
         } else {
             document.getElementById('weightChange').textContent = '-';
         }
-        
-        // Update chart
-        updateChart(friendData);
     }
 
-    // Update the chart
+    // Update the chart - FIXED VERSION
     function updateChart(friendData) {
+        console.log('Updating chart with data:', friendData);
+        
         const ctx = document.getElementById('weightChart').getContext('2d');
         
-        // Sort data by date to ensure correct order
-        const sortedData = [...friendData].sort((a, b) => new Date(a.date) - new Date(b.date));
+        // Clear previous chart
+        if (weightChart) {
+            weightChart.destroy();
+        }
         
-        const dates = sortedData.map(entry => {
+        // Prepare data for chart
+        const dates = friendData.map(entry => {
             try {
                 const date = new Date(entry.date);
                 return date.toLocaleDateString('en-US', { 
@@ -683,22 +696,18 @@
                     day: 'numeric' 
                 });
             } catch (error) {
-                return entry.date; // Return original if date parsing fails
+                console.warn('Invalid date:', entry.date);
+                return entry.date;
             }
         });
         
-        const weights = sortedData.map(entry => {
+        const weights = friendData.map(entry => {
             const weight = parseFloat(entry.weight);
             return isNaN(weight) ? 0 : weight;
         });
         
-        console.log('Chart dates:', dates);
-        console.log('Chart weights:', weights);
-        
-        // Destroy existing chart if it exists
-        if (weightChart) {
-            weightChart.destroy();
-        }
+        console.log('Chart labels (dates):', dates);
+        console.log('Chart data (weights):', weights);
         
         // Create new chart
         weightChart = new Chart(ctx, {
@@ -728,59 +737,25 @@
                         beginAtZero: false,
                         title: {
                             display: true,
-                            text: 'Weight (kg)',
-                            font: {
-                                size: 14,
-                                weight: 'bold'
-                            }
-                        },
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.1)'
+                            text: 'Weight (kg)'
                         }
                     },
                     x: {
                         title: {
                             display: true,
-                            text: 'Date',
-                            font: {
-                                size: 14,
-                                weight: 'bold'
-                            }
-                        },
-                        grid: {
-                            display: false
+                            text: 'Date'
                         }
                     }
                 },
                 plugins: {
                     legend: {
                         display: false
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        titleFont: {
-                            size: 14
-                        },
-                        bodyFont: {
-                            size: 14
-                        },
-                        callbacks: {
-                            label: function(context) {
-                                return `Weight: ${context.parsed.y} kg`;
-                            }
-                        }
                     }
-                },
-                interaction: {
-                    intersect: false,
-                    mode: 'index'
-                },
-                animation: {
-                    duration: 1000,
-                    easing: 'easeOutQuart'
                 }
             }
         });
+        
+        console.log('Chart created successfully');
     }
 
     // Update the table
@@ -842,13 +817,28 @@
         });
     }
 
-    // Add debug function to check data
-    window.debugData = function() {
-        console.log('All weight data:', weightData);
-        console.log('Selected friend ID:', selectedFriendId);
+    // Debug function to test chart with sample data
+    window.testChartWithSampleData = function() {
+        console.log('Testing chart with sample data...');
+        const sampleData = [
+            { friendId: 1, friendName: 'Prasath', date: '2023-12-01', weight: 75.5 },
+            { friendId: 1, friendName: 'Prasath', date: '2023-12-02', weight: 75.2 },
+            { friendId: 1, friendName: 'Prasath', date: '2023-12-03', weight: 74.8 },
+            { friendId: 1, friendName: 'Prasath', date: '2023-12-04', weight: 74.5 }
+        ];
+        updateChart(sampleData);
+    };
+
+    // Debug function to check current state
+    window.debugApp = function() {
+        console.log('=== APP DEBUG INFO ===');
+        console.log('Selected Friend ID:', selectedFriendId);
+        console.log('All Weight Data:', weightData);
+        console.log('Weight Chart:', weightChart);
+        
         if (selectedFriendId) {
             const friendData = weightData.filter(entry => entry.friendId === selectedFriendId);
-            console.log('Selected friend data:', friendData);
+            console.log('Selected Friend Data:', friendData);
         }
     };
 </script>
